@@ -1,0 +1,77 @@
+﻿@using WebMatrix.Data;
+
+@{
+    // create and open a connection to the database
+    var db = Database.Open("MTGDecks");
+
+    if (IsPost)
+    {
+        // define the SQL query to run
+        var insertDeckSQL = "INSERT INTO Decks(deckName, username) " +
+                               "VALUES(@0, @1); " +
+                               "SELECT SCOPE_IDENTITY();";
+        try
+        {
+
+
+            var deckIDvalue = db.QueryValue(insertDeckSQL,
+                Request.Form["deckName"],
+                Request.Form["username"]);
+            <div class="alert alert-success alert-dismissible fade show" role="alert">
+                <strong>Successful! </strong>You have created a new deck.
+                <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+        }
+        catch
+        {
+            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                <strong>Create Error! </strong>That deck cannot be created :(
+                <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+        }
+      
+    }
+    var usersql = "SELECT U.* FROM Users AS U ";
+    var user = db.Query(usersql);
+}
+
+<link href='https://fonts.googleapis.com/css?family=Montserrat' rel='stylesheet'>
+
+
+<h2 class="heading text-center">Create Deck</h2>
+<br />
+<form method="post" action="/Management/CreateDeck">
+    <div>
+
+        <div class="row">
+            <div class="col-6">
+                <input type="text" class="form-control" name="deckName" placeholder="Deck Name" />
+            </div>
+
+            <div class="col-6">
+                <select name="username" class="form-control">
+                    <option value="">-- Choose a user --</option>
+                    @foreach (var row in user)
+                    {
+                        <option value="@row.username">@row.username</option>
+                    }
+                </select>
+            </div>
+
+            <div class="row">
+                <div class="col-md-12 mt-4 text-right">
+                    <button type="submit" class="btn btn-success" name="save">Save</button>
+                    <button type="reset" class="btn btn-danger" name="clear">Clear</button>
+
+                </div>
+            </div>
+        </div>
+    </div>
+</form>
+
+
+

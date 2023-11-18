@@ -1,0 +1,120 @@
+﻿@using WebMatrix.Data;
+
+@{
+    // create and open a connection to the database
+    var db = Database.Open("MTGDecks");
+
+    // define the SQL query to run
+    var decksql = "SELECT DISTINCT D.*, ISNULL(SUM(quantity), 0) AS totalQuantity FROM Decks AS D " +
+                "LEFT JOIN CardsInDecks AS CID ON CID.deckID = D.deckID " +
+                "LEFT JOIN Users AS U ON U.username = D.username " +
+                "GROUP BY D.deckID, D.deckName, D.username ";
+
+    if (IsPost && Request.Form["searchDeck"] != null)
+    {
+        decksql = "SELECT DISTINCT D.*, ISNULL(SUM(quantity), 0) AS totalQuantity FROM Decks AS D " +
+                "LEFT JOIN CardsInDecks AS CID ON CID.deckID = D.deckID " +
+                "LEFT JOIN Users AS U ON U.username = D.username " +
+                "WHERE deckName LIKE CONCAT('%', @0, '%') " +
+                "GROUP BY D.deckID, D.deckName, D.username " +
+                "ORDER BY deckName ASC ";
+
+
+    }
+
+    if (IsPost && Request.Form["delete"] != null)
+    {
+
+
+        try
+        {
+            var deleteQueryString = "DELETE FROM CardsInDecks WHERE deckID = @0;" +
+                        "DELETE FROM Decks WHERE deckID = @0";
+            db.QuerySingle(deleteQueryString, Request.Form["delete"]);
+            <div class="alert alert-success alert-dismissible fade show" role="alert">
+                <strong>Record Deleted! </strong>You won't be seeing that record again...
+                <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+        }
+        catch
+        {
+            <div class="alert alert-success alert-dismissible fade show" role="alert">
+                <strong>Delete Error! </strong>That record cannot be deleted :(
+                <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+        }
+    }
+
+    var deck = db.Query(decksql, Request.Form["searchDeck"]);
+}
+
+<link href='https://fonts.googleapis.com/css?family=Montserrat' rel='stylesheet'>
+
+
+<h2 class="heading text-center">User Decks</h2>
+<br />
+<h2></h2>
+
+<form method="post" action="/Home/UserDecks">
+    <div class="row">
+        <div class="col-4">
+            <input type="text" name="searchDeck" class="form-control" placeholder="Search Decks" value="@Request.Form["searchDeck"]" />
+        </div>
+        <div class="col-2">
+            <button type="submit" class="btn btn-primary">Search</button>
+        </div>
+    </div>
+    <br />
+    @if (deck.Count() > 0)
+    {
+        <div class="row">
+            <div class="col-12">
+
+                <table class="table table-info table-striped table-hover">
+                    <thead>
+                        <tr>
+                            <th class="col-1">Deck #</th>
+                            <th class="col-3">Deck Name</th>
+                            <th class="col-2">User</th>
+                            <th class="col-2">Total Quantity</th>
+                            <th class="col-5">  Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var row in deck)
+                        {
+                            <tr>
+                                <td class="col-1" name="deckID">@row.deckID</td>
+                                <td class="col-3" name="deckName">@row.deckName</td>
+                                <td class="col-2" name="username">@row.username</td>
+                                <td class="col-2" name="quantity">@row.totalQuantity</td>
+                                <td class="col-5">
+
+
+                                    <a href="/Home/DeckDisplay?id=@row.deckID" class="btn btn-warning" id="view">View all cards</a>
+
+                                    <button name="delete" value="@row.deckID" type="submit" class="btn btn-danger" id="addCard">Delete</button>
+
+
+                                </td>
+                            </tr>
+                        }
+
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    }
+    else
+    {
+        <h2 class="text-danger text-center">Oops! No matching cards returned...</h2>
+    }
+</form>
+
+
+

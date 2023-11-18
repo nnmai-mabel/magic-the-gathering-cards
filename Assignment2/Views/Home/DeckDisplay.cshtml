@@ -1,0 +1,140 @@
+﻿@using WebMatrix.Data;
+
+@{
+    // create and open a connection to the database
+    var db = Database.Open("MTGDecks");
+
+    // define the SQL query to run
+    var deckDisplaysql = "SELECT * FROM CardsInDecks AS CID " +
+        "LEFT JOIN Decks AS D ON D.deckID = CID.deckID " +
+        "LEFT JOIN Cards AS C ON C.cardID = CID.cardID " +
+        "WHERE CID.deckID = @0";
+    var id = Request.QueryString["id"];
+
+
+    //var rfid = Request.Form["rfid"];
+
+    var currentDecksql = "SELECT * FROM Decks WHERE deckID = @0";
+
+    var deckCountsql = "SELECT ISNULL(SUM(quantity), 0) AS totalQuantity FROM CardsInDecks AS CID " +
+            "WHERE CID.deckID = @0";
+    @*var cardQuantitysql = "SELECT quantity FROM CardsInDecks AS CID" +
+        "WHERE deckID = @0 AND cardID = @1";*@
+    @*var cardQuantitysql = "SELECT quantity FROM CardsInDecks AS CID " +
+                //"LEFT JOIN Decks AS D ON D.deckID = CID.deckID " +
+                //"LEFT JOIN Cards AS C ON C.cardID = CID.cardID " +
+                "WHERE CID.cardID = @0";
+        var cardQuantity = db.QuerySingle(cardQuantitysql, Request.Form["cardID"]);*@
+
+    if (IsPost && Request.Form["delete"] != null)
+    {
+        @*if (cardQuantity == null) { cardQuantity = 0; }
+            if (cardQuantity == 1)
+            {*@
+        var newid = Request.Form["newid"];
+        try
+        {
+            var deleteCardInDeck = "DELETE FROM CardsInDecks WHERE deckID = @0 AND cardID = @1";
+            db.QuerySingle(deleteCardInDeck, newid, Request.Form["delete"]);
+            <div class="alert alert-success alert-dismissible fade show" role="alert">
+                <strong>Card Deleted! </strong>You won't be seeing that card again in this deck.
+                <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+        }
+        catch
+        {
+            <div class="alert alert-success alert-dismissible fade show" role="alert">
+                <strong>Delete Error!</strong>That card cannot be deleted :(
+                <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+        }
+
+    }
+    if (IsPost && Request.Form["update"] != null)
+    {
+        var newid = Request.Form["newid"];
+        @*try
+            {
+                var updateQuantitysql = "UPDATE CardsInDecks " +
+                                "SET quantity = @0 " +
+                                "WHERE deckID = @1 AND cardID = @2;";
+                var newQuantity = Request.Form["quantity"];
+                var cardID = Request.Form["update"];
+                db.Execute(updateQuantitysql, newQuantity, newid, cardID);
+                    <div class="alert alert-success alert-dismissible fade show" role="alert">
+                        <strong>Successful! </strong>You have updated quantity of card to your deck!
+                        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                }
+                catch
+                {
+                    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                        <strong>Insert Error! </strong>Card quantity cannot be updated :(
+                        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                }*@
+
+
+        @*var cardQuantity = db.QuerySingle(cardQuantitysql, id, Request.Form["newid"]);*@
+    }
+    var deck = db.Query(deckDisplaysql, id);
+    var deckcount = db.QuerySingle(deckCountsql, id);
+    var currentDeck = db.QuerySingle(currentDecksql, id);
+}
+
+<link href='https://fonts.googleapis.com/css?family=Montserrat' rel='stylesheet'>
+
+<div class="jumbotron pt-1 pb-1 mt-2">
+    <h2 class="heading text-center">@currentDeck.deckName Deck Display</h2>
+    <a href="/Home/UserDecks" class="btn btn-warning">View all decks</a>
+
+</div>
+<form method="post" action="/Home/DeckDisplay?id=@Request.QueryString["id"]">
+    @if (deck.Count() > 0)
+    {
+        <p>Total Quantity of Deck: @deckcount.totalQuantity</p>
+        <p><em>Remove a card will remove all its duplicates in the decks</em></p>
+        <div class="row">
+            <div class="row">
+                <input type="hidden" name="newid" value="@currentDeck.deckID" />
+
+                @foreach (var row in deck)
+                {
+
+                    <div class="col-3 justify-content-center">
+                        <div class="card border border-white">
+                            <img src="@row.imageURL" class="card-img-top" alt="...">
+                            <p></p>
+                            <p>Quantity: @row.quantity</p>
+
+                            <a href="/Home/Details?id=@row.cardID" class="btn btn-outline-info">Details</a>
+
+                            <button name="delete" value="@row.cardID" type="submit" class="btn btn-outline-danger">Delete</button>
+
+                            @*<input type="number" name="quantity" placeholder="Enter quantity" class="form-control"/>*@
+                            @*<button name="update" value="@row.cardID" type="submit" class="btn btn-outline-warning">Update</button>*@
+
+                        </div>
+                    </div>
+                }
+            </div>
+
+        </div>
+
+    }
+    else
+    {
+        <h2 class="text-danger text-center">Oops! No matching cards returned...</h2>
+    }
+</form>
+
+
+

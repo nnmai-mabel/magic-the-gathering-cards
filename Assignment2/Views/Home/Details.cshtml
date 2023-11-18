@@ -1,0 +1,439 @@
+﻿@using WebMatrix.Data;
+
+@{
+    // create and open a connection to the database
+    var db = Database.Open("MTGDecks");
+
+    //Grab all the cards info
+    var sql = "SELECT * FROM Cards AS C " +
+        "LEFT JOIN Artists AS A ON A.artistID = C.artistID " +
+        "LEFT JOIN CardHasColours AS CHC ON CHC.cardID = C.cardID " +
+        "LEFT JOIN CardHasIdentity AS CHI ON CHI.cardID = C.cardID " +
+        "LEFT JOIN CardHasKeywords AS CHK ON CHK.cardID = C.cardID " +
+        "LEFT JOIN CardHasTypes AS CHT ON CHT.cardID = C.cardID " +
+        "LEFT JOIN CardManaCosts AS CMC ON CMC.cardID = C.cardID " +
+        "LEFT JOIN CardsInDecks AS CID ON CID.cardID = C.cardID " +
+        "LEFT JOIN CardsInSets AS CIS ON CIS.cardID = C.cardID " +
+        "LEFT JOIN CardStats AS CS ON CS.cardID = C.cardID " +
+        "LEFT JOIN CardTypes AS CT ON CT.cardType = CHT.cardType " +
+        "LEFT JOIN Decks AS D ON D.deckID = CID.deckID " +
+        "LEFT JOIN ExpansionSets AS ES ON ES.setID = CIS.setID " +
+        "LEFT JOIN FlavourTexts AS FT ON FT.cardID = C.cardID " +
+        "LEFT JOIN Keywords AS K ON CHK.keyword = K.keyword " +
+        "LEFT JOIN ManaColours AS MC ON MC.colourID = CMC.colourID " +
+        "LEFT JOIN Users AS U ON U.username = D.username " +
+        "WHERE C.cardID = @0";
+
+    var decksql = "SELECT DISTINCT D.* FROM Decks AS D";
+    var chccolourIDsql = "SELECT * FROM CardHasColours AS CHC " +
+                "LEFT JOIN ManaColours AS MC ON MC.colourID = CHC.colourID " +
+                "WHERE cardID = @0 ";
+    var chicolourIDsql = "SELECT * FROM CardHasIdentity AS CHI " +
+       "LEFT JOIN ManaColours AS MC ON MC.colourID = CHI.colourID " +
+       "WHERE cardID = @0 ";
+    var cmccolourIDsql = "SELECT * FROM CardManaCosts AS CMC " +
+       "LEFT JOIN ManaColours AS MC ON MC.colourID = CMC.colourID " +
+       "WHERE cardID = @0 ";
+
+
+    var id = Request.QueryString["id"];
+
+    var card = db.QuerySingle(sql, id);
+    var chccolour = db.Query(chccolourIDsql, id);
+    var chicolour = db.Query(chicolourIDsql, id);
+    var cmccolour = db.Query(cmccolourIDsql, id);
+
+
+    var iData = db.Execute(sql, id);
+
+    var deck = db.Query(decksql, Request.Form["addCardToDeck"]);
+    var deckCountsql = "SELECT ISNULL(SUM(quantity),0) AS totalQuantity FROM CardsInDecks AS CID " +
+                    "WHERE CID.deckID = @0";
+    var deckcount = db.QuerySingle(deckCountsql, Request.Form["deckIDvalue"]);
+
+    if (IsPost && Request.Form["addCardToDeck"] != null)
+    {
+        var did = Request.Form["deckIDvalue"];
+        var cid = Request.Form["addCardToDeck"];
+        var qty = Request.Form["quantity"];
+
+        if (cid != null && did != null && deckcount.totalQuantity < 60 && Convert.ToInt32(qty) <= (60 - deckcount.totalQuantity))
+        {
+
+
+
+            var checkcardIDsql = "SELECT * FROM CardsInDecks WHERE deckID = @0 and cardID = @1 ";
+            var checkCard = db.Query(checkcardIDsql, did, cid);
+
+            @*IF there is no cardID with that deckID exists yet in CardsInDecks, the count should be 0 and can add a new row of card, or else just update the quantity*@
+            if (checkCard.Count() == 0)
+            {
+                var insertCardSQL = "INSERT INTO CardsInDecks(deckID, cardID, quantity) " +
+                               "VALUES(@0, @1, @2); " +
+                               "SELECT SCOPE_IDENTITY();";
+                try
+                {
+
+
+                    var deckIDvalue = db.QueryValue(insertCardSQL,
+                did,
+                cid,
+                qty);
+                    <div class="alert alert-success alert-dismissible fade show" role="alert">
+                        <strong>Successful! </strong>You have added a new card to your deck!
+                        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                }
+                catch
+                {
+                    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                        <strong>Insert Error! </strong>That card cannot be added :(
+                        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                }
+            }
+            else
+            {
+
+                var quantityInDecksql = "SELECT quantity FROM CardsInDecks WHERE deckID = @0 and cardID = @1 ";
+                var quantityInDeck = db.QueryValue(quantityInDecksql, did, cid);
+                quantityInDeck += Convert.ToInt32(qty);
+                var updateQuantitysql = "UPDATE CardsInDecks " +
+                                "SET quantity = @0 " +
+                                "WHERE deckID = @1 AND cardID = @2";
+                try
+                {
+                    var updateQuantity = db.QueryValue(updateQuantitysql, quantityInDeck, did, cid);
+
+                    <div class="alert alert-success alert-dismissible fade show" role="alert">
+                        <strong>Successful! </strong>You have updated quantity of card to your deck!
+                        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                }
+                catch
+                {
+                    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                        <strong>Insert Error! </strong>That card cannot be added :(
+                        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                }
+            }
+
+
+        }
+        else
+        {
+            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                <strong>Insert Error! </strong>That card cannot be added :(
+                <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+        }
+    }
+
+}
+
+<link href='https://fonts.googleapis.com/css?family=Montserrat' rel='stylesheet'>
+
+
+<h2 class="heading text-center">Details</h2>
+<br />
+@if (card != null)
+{
+    <form method="post" action="/Home/Details?id=@card.cardID">
+        <div class="row">
+            <div class="col-3">
+                <p>Add this card to a deck</p>
+            </div>
+            <div class="col-3">
+                <select name="deckIDvalue" class="form-control">
+                    <option value="" selected>Select Deck...</option>
+                    @foreach (var adeck in deck)
+                    {
+                        <option value="@adeck.deckID">@adeck.deckName</option>
+                    }
+                </select>
+            </div>
+            <div class="col-2">
+                <input type="number" name="quantity" placeholder="Enter quantity" value="1" min="1" class="form-control" />
+            </div>
+            <div class="col-2">
+                <button type="submit" name="addCardToDeck" value="@card.cardID" class="btn btn-success">Add card</button>
+            </div>
+        </div>
+        <br /><br />
+
+    </form>
+    <div class="row justify-content-end">
+        <div class="col-4">
+            <img src="@card.imageURL" class="card-img-top" alt="...">
+        </div>
+        <div class="col-1">
+
+        </div>
+        <div class="col-7">
+            <!--Show the card information-->
+            @{
+                if (!String.IsNullOrEmpty(card.cardName))
+                {
+                    <h3>@card.cardName</h3>
+                    <h3></h3>
+                }
+
+                if (!String.IsNullOrEmpty(card.artist))
+                {
+                    <h5 name="artist">Designed by <em>@card.artist</em></h5>
+                    <h5></h5>
+                }
+
+                if (card.cmc != null)
+                {
+
+                    <p><strong>CMC cost:</strong> @card.cmc</p>
+
+                }
+
+                if (chccolour.Count() > 0)
+                {
+
+                    <p class="d-inline"><strong>Colour:</strong></p>
+
+                    foreach (var row in chccolour)
+                    {
+                        if (row.colour == "Brown")
+                        {
+
+                            <img src="https://managathering.com/images/colorless.png" alt="..." />
+
+                        }
+                        else if (row.colourID == "B")
+                        {
+
+                            <img src="https://miro.medium.com/max/450/1*6eelskg5O2w2ujOrZ7UqTA.png" alt="..." />
+
+                        }
+                        else if (row.colourID == "G")
+                        {
+
+                            <img src="https://miro.medium.com/max/450/1*tlFHS3NXUkmEtPIE4QOUjQ.png" alt="..." />
+
+                        }
+                        else if (row.colourID == "R")
+                        {
+                            <img src="https://miro.medium.com/max/450/1*BXo8q3OT144yUeOhDMIbzw.png" alt="..." />
+
+                        }
+                        else if (row.colourID == "U")
+                        {
+
+                            <img src="https://miro.medium.com/max/500/1*b7GF-I5Igj5pz0cNrPoHRQ.png" alt="..." />
+
+                        }
+                        else if (row.colourID == "W")
+                        {
+
+                            <img src="https://miro.medium.com/max/500/1*l2llQ_yQq2a8Rxr0rRIp_g.png" alt="..." />
+
+                        }
+
+                    }
+                    <p></p>
+                }
+
+                if (chicolour.Count() > 0)
+                {
+                    <p class="d-inline"><strong>Identity:</strong> </p>
+                    foreach (var row in chicolour)
+                    {
+
+                        if (row.colour == "Brown")
+                        {
+
+
+                            <img src="https://managathering.com/images/colorless.png" alt="..." />
+
+                        }
+                        else if (row.colourID == "B")
+                        {
+
+                            <img src="https://miro.medium.com/max/450/1*6eelskg5O2w2ujOrZ7UqTA.png" alt="..." />
+
+                        }
+                        else if (row.colourID == "G")
+                        {
+
+                            <img src="https://miro.medium.com/max/450/1*tlFHS3NXUkmEtPIE4QOUjQ.png" alt="..." />
+
+                        }
+                        else if (row.colourID == "R")
+                        {
+                            <img src="https://miro.medium.com/max/450/1*BXo8q3OT144yUeOhDMIbzw.png" alt="..." />
+
+                        }
+                        else if (row.colourID == "U")
+                        {
+
+                            <img src="https://miro.medium.com/max/500/1*b7GF-I5Igj5pz0cNrPoHRQ.png" alt="..." />
+
+                        }
+                        else if (row.colourID == "W")
+                        {
+
+                            <img src="https://miro.medium.com/max/500/1*l2llQ_yQq2a8Rxr0rRIp_g.png" alt="..." />
+
+                        }
+                    }
+                    <p></p>
+                }
+
+                if (cmccolour.Count() > 0)
+                {
+                    <p class="d-inline"><strong>Mana colour:</strong> </p>
+                    foreach (var row in cmccolour)
+                    {
+
+                        if (row.colour == "Brown")
+                        {
+                          
+                            <img src="https://managathering.com/images/colorless.png" alt="..." />
+
+                        }
+                        else if (row.colourID == "B")
+                        {
+                            for (int i = 0; i < Convert.ToInt32(row.quantity); i++)
+                            {
+                                <img src="https://miro.medium.com/max/450/1*6eelskg5O2w2ujOrZ7UqTA.png" alt="..." />
+                            }
+                        }
+                        else if (row.colourID == "G")
+                        {
+                            for (int i = 0; i < Convert.ToInt32(row.quantity); i++)
+                            {
+                                <img src="https://miro.medium.com/max/450/1*tlFHS3NXUkmEtPIE4QOUjQ.png" alt="..." />
+                            }
+                        }
+                        else if (row.colourID == "R")
+                        {
+                            for (int i = 0; i < Convert.ToInt32(row.quantity); i++)
+                            {
+                                <img src="https://miro.medium.com/max/450/1*BXo8q3OT144yUeOhDMIbzw.png" alt="..." />
+                            }
+                        }
+                        else if (row.colourID == "U")
+                        {
+                            for (int i = 0; i < Convert.ToInt32(row.quantity); i++)
+                            {
+                                <img src="https://miro.medium.com/max/500/1*b7GF-I5Igj5pz0cNrPoHRQ.png" alt="..." />
+                            }
+                        }
+                        else if (row.colourID == "W")
+                        {
+                            for (int i = 0; i < Convert.ToInt32(row.quantity); i++)
+                            {
+                                <img src="https://miro.medium.com/max/500/1*l2llQ_yQq2a8Rxr0rRIp_g.png" alt="..." />
+                            }
+                        }
+                    }
+                    <p></p>
+                }
+                if (!String.IsNullOrEmpty(card.rarity))
+                {
+
+                    <p><strong>Card rarity:</strong> @card.rarity</p>
+
+                }
+                if (!String.IsNullOrEmpty(card.lang))
+                {
+
+                    <p><strong>Card language:</strong> @card.lang</p>
+
+                }
+                if (card.isPopular == false)
+                {
+                    <p><strong>Card popular:</strong> not popular</p>
+                }
+                else if (card.isPopular == true)
+                {
+                    <p><strong>Card popular</strong> is popular</p>
+                }
+
+
+                <!--Get the card types and keywords-->
+
+
+                if (!String.IsNullOrEmpty(card.keyword))
+                {
+                    <p><strong>Keyword:</strong> @card.keyword</p>
+                }
+
+                if (!String.IsNullOrEmpty(card.cardType))
+                {
+
+                    <p><strong>Type:</strong> @card.cardType</p>
+
+                }
+                if (!String.IsNullOrEmpty(card.oracleText))
+                {
+
+                    <p><strong>Oracle text:</strong> <em>@card.oracleText</em></p>
+
+                }
+                if (!String.IsNullOrEmpty(card.flavourText))
+                {
+
+                    <p><strong>Flavour text:</strong><em> @card.flavourText</em></p>
+
+                }
+
+                if (!String.IsNullOrEmpty(card.cardPower))
+                {
+
+                    <p><strong>Power:</strong> @card.cardPower</p>
+
+                }
+                if (!String.IsNullOrEmpty(card.cardToughness))
+                {
+
+                    <p><strong>Toughness:</strong> @card.cardToughness</p>
+
+                }
+                if (!String.IsNullOrEmpty(card.setName))
+                {
+
+                    <p><strong>Set name:</strong> @card.setName</p>
+
+                }
+                {
+
+                    <p><strong>Set type:</strong> @card.setType</p>
+
+                }
+                if (card.releaseDate != null)
+                {
+
+                    <p><strong>Release date:</strong> @card.releaseDate</p>
+
+                }
+
+            }
+        </div>
+    </div>
+
+}
+else
+{
+    <h2 class="text-danger text-center">Oops! No matching cards returned...</h2>
+
+}
+
+
+

@@ -1,0 +1,375 @@
+﻿@using WebMatrix.Data
+
+
+@{
+    var db = Database.Open("MTGDecks");
+
+    var sql = "SELECT * FROM Cards WHERE isPopular = 'true' ";
+
+    // concatenate string when the search button is hit
+    var rqsearchCard = Request.Form["searchCard"];
+    if (rqsearchCard == "") { rqsearchCard = null; }
+    @*if (IsPost &&  != null)
+        {
+            sql = "SELECT * FROM Cards  ";
+        }*@
+
+
+    var artistsql = "SELECT DISTINCT artist FROM Artists AS A ";
+
+    var raritysql = "SELECT DISTINCT rarity FROM Cards AS C";
+    var cardTypesql = "SELECT DISTINCT cardType FROM CardTypes";
+    var setTypesql = "SELECT DISTINCT setType FROM ExpansionSets";
+    var chccolourIDsql = "SELECT DISTINCT CHC.colourID, MC.colour FROM CardHasColours AS CHC " +
+                "JOIN ManaColours AS MC ON MC.colourID = CHC.colourID " +
+                "ORDER BY MC.colour ASC ";
+    var chicolourIDsql = "SELECT DISTINCT CHI.colourID, MC.colour FROM CardHasIdentity AS CHI " +
+                    "JOIN ManaColours AS MC ON MC.colourID = CHI.colourID " +
+                    "ORDER BY MC.colour ASC ";
+    var cmcsql = "SELECT DISTINCT cmc FROM Cards ";
+    var powersql = "SELECT DISTINCT cardPower FROM CardStats";
+    var toughnesssql = "SELECT DISTINCT cardToughness FROM CardStats";
+    var setNamesql = "SELECT DISTINCT setName FROM ExpansionSets";
+
+    var decksql = "SELECT DISTINCT D.* FROM Decks AS D";
+
+    var output = db.Query(sql, Request.Form["searchCard"]);
+
+    @*Check if it is empty, change it to null so it doesn't run the code below' ASSIGN IT TO A VARIABLE AND THEN CHANGE VALUE TO NULL*@
+    var rqartist = Request.Form["artist"];
+    var rqrarity = Request.Form["rarity"];
+    var rqcardType = Request.Form["cardType"];
+    var rqsetType = Request.Form["setType"];
+    var rqchccolourID = Request.Form["chccolourID"];
+    var rqchicolourID = Request.Form["chicolourID"];
+    var rqcmc = Request.Form["cmc"];
+    var rqpower = Request.Form["power"];
+    var rqtoughness = Request.Form["toughness"];
+    var rqsetName = Request.Form["setName"];
+
+    if (rqartist == "") { rqartist = null; }
+    if (rqrarity == "") { rqrarity = null; }
+    if (rqcardType == "") { rqcardType = null; }
+    if (rqsetType == "") { rqsetType = null; }
+    if (rqchccolourID == "") { rqchccolourID = null; }
+    if (rqchicolourID == "") { rqchicolourID = null; }
+    if (rqsearchCard == "") { rqsearchCard = null; }
+    if (rqcmc == "") { rqcmc = null; }
+    if (rqpower == "") { rqpower = null; }
+    if (rqtoughness == "") { rqtoughness = null; }
+    if (rqsetName == "") { rqsetName = null; }
+
+    if (IsPost && (rqsearchCard != null || rqrarity != null || rqcardType != null || rqsetType != null ||
+        rqchccolourID != null || rqchicolourID != null || rqartist != null || rqcmc != null || rqpower != null ||
+        rqtoughness != null || rqsetName != null))
+    {
+        sql = "SELECT DISTINCT C.* FROM Cards AS C " +
+        "JOIN Artists AS A ON A.artistID = C.artistID " +
+        "LEFT JOIN CardStats AS CS ON CS.cardID = C.cardID " +
+        "LEFT JOIN CardHasKeywords AS CHK ON CHK.cardID = C.cardID " +
+        "LEFT JOIN Keywords AS K ON CHK.keyword = K.keyword " +
+        "JOIN CardHasTypes AS CHT ON CHT.cardID = C.cardID " +
+        "JOIN CardTypes AS CT ON CT.cardType = CHT.cardType " +
+
+
+        "LEFT JOIN CardsInSets AS CIS ON CIS.cardID = C.cardID " +
+        "LEFT JOIN ExpansionSets AS ES ON ES.setID = CIS.setID " +
+        "LEFT JOIN CardManaCosts AS CMC ON CMC.cardID = C.cardID " +
+        "LEFT JOIN CardHasColours AS CHC ON CHC.cardID = C.cardID " +
+        "LEFT JOIN CardHasIdentity AS CHI ON CHI.cardID = C.cardID " +
+        "WHERE (@0 IS NULL OR C.cardName LIKE CONCAT('%', @0, '%')) " +
+        "AND (@1 IS NULL OR A.artist LIKE CONCAT('%', @1, '%')) " +
+        "AND (@2 IS NULL OR C.rarity LIKE @2) " +
+        "AND (@3 IS NULL OR CT.cardType LIKE @3) " +
+        "AND (@4 IS NULL OR ES.setType LIKE @4) " +
+        "AND (@5 IS NULL OR CHC.colourID LIKE @5) " +
+        "AND (@6 IS NULL OR CHI.colourID LIKE @6) " +
+        "AND (@7 IS NULL OR C.cmc LIKE @7) " +
+        "AND (@8 IS NULL OR CS.cardPower LIKE @8) " +
+        "AND (@9 IS NULL OR CS.cardToughness LIKE @9) " +
+        "AND (@10 IS NULL OR ES.setName LIKE CONCAT('%',@10,'%')) " +
+        "ORDER BY cardName ASC ";
+
+        output = db.Query(sql, rqsearchCard,
+            rqartist,
+            rqrarity,
+            rqcardType,
+            rqsetType,
+            rqchccolourID,
+            rqchicolourID,
+            rqcmc,
+            rqpower,
+            rqtoughness,
+            rqsetName);
+    }
+
+    var artist = db.Query(artistsql, Request.Form["artist"]);
+    var rarity = db.Query(raritysql, Request.Form["rarity"]);
+    var cardType = db.Query(cardTypesql, Request.Form["cardType"]);
+    var setType = db.Query(setTypesql, Request.Form["setType"]);
+    var chccolourID = db.Query(chccolourIDsql, Request.Form["chccolourID"]);
+    var chicolourID = db.Query(chicolourIDsql, Request.Form["chicolourID"]);
+    var cmc = db.Query(cmcsql, Request.Form["cmc"]);
+    var power = db.Query(powersql, Request.Form["power"]);
+    var toughness = db.Query(toughnesssql, Request.Form["toughness"]);
+    var setName = db.Query(setNamesql, Request.Form["setName"]);
+
+    var deck = db.Query(decksql, Request.Form["addCardToDeck"]);
+    var deckCountsql = "SELECT ISNULL(SUM(quantity),0) AS totalQuantity FROM CardsInDecks AS CID " +
+                    "WHERE CID.deckID = @0";
+    var deckcount = db.QuerySingle(deckCountsql, Request.Form["deckIDvalue"]);
+
+    if (IsPost && Request.Form["addCardToDeck"] != null)
+    {
+
+        var did = Request.Form["deckIDvalue"];
+        var cid = Request.Form["addCardToDeck"];
+        var qty = Request.Form["quantity"];
+
+        @*Check quantity < 60, also check when add new quantity of card will exceed 60*@
+        if (cid != null && did != null && deckcount.totalQuantity < 60 && Convert.ToInt32(qty) <= (60 - deckcount.totalQuantity))
+        {
+
+            var checkcardIDsql = "SELECT * FROM CardsInDecks WHERE deckID = @0 and cardID = @1 ";
+            var checkCard = db.Query(checkcardIDsql, did, cid);
+
+            @*IF there is no cardID with that deckID exists yet in CardsInDecks, the count should be 0 and can add a new row of card, or else just update the quantity*@
+            if (checkCard.Count() == 0)
+            {
+
+                var insertCardSQL = "INSERT INTO CardsInDecks(deckID, cardID, quantity) " +
+                                       "VALUES(@0, @1, @2); " +
+                                       "SELECT SCOPE_IDENTITY();";
+                try
+                {
+                    db.QueryValue(insertCardSQL,
+            did,
+            cid,
+            qty);
+
+            <div class="alert alert-success alert-dismissible fade show" role="alert">
+                <strong>Successful! </strong>You have added a new card to your deck!
+                <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+        }
+        catch
+        {
+            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                <strong>Insert Error! </strong>That card cannot be added :(
+                <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+        }
+    }
+    else
+    {
+        var quantityInDecksql = "SELECT quantity FROM CardsInDecks WHERE deckID = @0 and cardID = @1 ";
+        var quantityInDeck = db.QueryValue(quantityInDecksql, did, cid);
+        quantityInDeck += Convert.ToInt32(qty);
+        var updateQuantitysql = "UPDATE CardsInDecks " +
+                        "SET quantity = @0 " +
+                        "WHERE deckID = @1 AND cardID = @2";
+        try
+        {
+            db.QueryValue(updateQuantitysql, quantityInDeck, did, cid);
+
+            <div class="alert alert-success alert-dismissible fade show" role="alert">
+                <strong>Successful! </strong>You have updated quantity of card to your deck!
+                <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+        }
+        catch
+        {
+            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                <strong>Insert Error! </strong>That card cannot be added :(
+                <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+        }
+
+    }
+
+}
+else
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <strong>Insert Error! </strong>That card cannot be added :(
+        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+        </button>
+    </div>
+}
+
+}
+
+}
+
+<link href='https://fonts.googleapis.com/css?family=Montserrat' rel='stylesheet'>
+
+<form method="post" action="/Home/Index">
+    <div class="container">
+        <div class="row align-items-center">
+            <div class="col-3">
+                <a href="/Management/CreateDeck" class="btn btn-warning">Create Deck</a>
+
+            </div>
+            <div class="col-3 align-items-center">
+                <p>Add card to your deck</p>
+
+            </div>
+            <div class="col-3">
+                <select name="deckIDvalue" class="form-control" id="selectDeck">
+                    <option value="" selected>Select Deck...</option>
+                    @foreach (var adeck in deck)
+                    {
+                        <option value="@adeck.deckID">@adeck.deckName</option>
+                    }
+                </select>
+            </div>
+            <div class="col-2">
+                <input type="number" name="quantity" placeholder="Enter quantity" value="1" min="1" class="form-control" />
+
+            </div>
+        </div>
+    </div>
+    <div class="row">
+        <h2 class="heading text-center">All Cards</h2>
+        <h2></h2>
+        <h2></h2>
+    </div>
+    <div class="row">
+
+
+
+    </div>
+
+
+    <div class="row">
+        <div class="col-2">
+            <div name="filter">
+                <p>Filter by:</p>
+                <input type="text" name="searchCard" class="form-control" placeholder="Search Cards" value="@Request.Form["searchCard"]" id="filter" />
+                <input type="text" name="artist" class="form-control" placeholder="Search Artists" value="@Request.Form["artist"]" id="filter" />
+                <input type="text" name="setName" class="form-control" placeholder="Search Sets" value="@Request.Form["setName"]" id="filter" />
+
+                <p id="filter">Rarity</p>
+                <select class="form-control" name="rarity" id="filter">
+                    @*<option value="" selected></option>*@
+                    <option value="" selected></option>
+                    <option value="%" @("%" == Request.Form["rarity"] ? "selected" : "")>All rarities</option>
+                    @foreach (var rar in rarity)
+                    {
+                        <option value="@rar.rarity" @(rar.rarity == Request.Form["rarity"] ? "selected" : "")>@rar.rarity</option>
+                    }
+                </select>
+                @*<div class="form-check">
+                        @foreach (var rar in rarity)
+                        {
+                            <div class="row">
+                                <input class="form-check-input" type="radio" name="rarity" id="rarity" />
+                                <label class="form-check-label" for="rarity" id="rarity2">@rar.rarity</label>
+                            </div>
+                        }
+                    </div>*@
+                <p id="filter">Card type</p>
+                <select class="form-control" name="cardType" id="filter">
+                    @*<option value="" selected></option>*@
+                    <option value="" selected></option>
+                    <option value="%" @("%" == Request.Form["cardType"] ? "selected" : "")>All card types</option>
+                    @foreach (var ct in cardType)
+                    {
+
+                        <option value="@ct.cardType" @(ct.cardType == Request.Form["cardType"] ? "selected" : "")>@ct.cardType</option>
+                    }
+                </select>
+
+                <p id="filter">Set type</p>
+                <select class="form-control" name="setType" id="filter">
+                    @*<option value="" selected></option>*@
+                    <option value="" selected></option>
+                    <option value="%" @("%" == Request.Form["setType"] ? "selected" : "")>All set types</option>
+                    @foreach (var st in setType)
+                    {
+                        <option value="@st.setType" @(st.setType == Request.Form["setType"] ? "selected" : "")>@st.setType</option>
+                    }
+                </select>
+
+                <p id="filter">Colour</p>
+                <select class="form-control" name="chccolourID" id="filter">
+                    @*<option value="" selected></option>*@
+                    <option value="" selected></option>
+                    <option value="%" @("%" == Request.Form["chccolourID"] ? "selected" : "")>All colours</option>
+
+                    @foreach (var acolourID in chccolourID)
+                    {
+                        <option value="@acolourID.colourID" @(acolourID.colourID == Request.Form["chccolourID"] ? "selected" : "")>@acolourID.colour</option>
+                    }
+
+                </select>
+                <p id="filter">Identity</p>
+                <select class="form-control" name="chicolourID" id="filter">
+                    @*<option value="" selected></option>*@
+                    <option value="" selected></option>
+                    <option value="%" @("%" == Request.Form["chicolourID"] ? "selected" : "")>All identities</option>
+
+                    @foreach (var acolourID in chicolourID)
+                    {
+                        <option value="@acolourID.colourID" @(acolourID.colourID == Request.Form["chicolourID"] ? "selected" : "")>@acolourID.colour</option>
+                    }
+
+                </select>
+                <input type="number" name="cmc" class="form-control" placeholder="Search CMC" min="0" max="16" value="@Request.Form["cmc"]" id="filter" />
+                <input type="number" name="power" class="form-control" placeholder="Power" value="@Request.Form["power"]" id="filter" />
+                <input type="number" name="toughness" class="form-control" placeholder="Toughness" value="@Request.Form["toughness"]" id="filter" />
+                <button type="submit" class="btn btn-dark" id="filter">Search</button>
+
+            </div>
+        </div>
+
+
+        <div class="col-10">
+            <div id="cardDisplay">
+                @if (output.Count() > 0)
+                {
+                    <div class="row">
+                        <div class="row">
+
+                            @foreach (var row in output)
+                            {
+                                <div class="col-4 justify-content-center">
+                                    <div class="card border border-white">
+                                        <img src="@row.imageURL" class="card-img-top" alt="...">
+                                        <div class="card-body">
+
+
+                                            <a href="/Home/Details?id=@row.cardID" class="btn btn-outline-info btn-sm" id="details">Details</a>
+
+
+                                            <button type="submit" name="addCardToDeck" value="@row.cardID" class="btn btn-outline-success btn-sm" id="addCard">Add card</button>
+
+                                        </div>
+
+                                    </div>
+                                </div>
+                            }
+                        </div>
+
+                    </div>
+
+
+                }
+                else
+                {
+                    <h2 class="text-danger text-center">Oops! No matching cards returned...</h2>
+                }
+            </div>
+        </div>
+    </div>
+</form>
+
